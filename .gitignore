@@ -1,0 +1,48 @@
+# 환경변수 (절대 커밋 금지)
+.env
+.env.local
+.env.*.local
+
+# Python 기본 제외
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# uv lock (선택적 커밋 — 팀 방침에 따름)
+# uv.lock
+
+# 빌드 파이프라인 중간 산출물 (수 GB)
+data/
+*.parquet
+*.arrow
+*.jsonl
+!tests/fixtures/*.jsonl
+
+# HuggingFace 캐시
+.cache/
+~/.cache/huggingface/
+
+# 테스트 및 커버리지
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

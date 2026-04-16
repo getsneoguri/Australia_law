@@ -1,0 +1,14 @@
+# pyproject.toml [project.dependencies]와 동일한 내용.
+# Render 배포는 기본적으로 requirements.txt를 읽으므로 별도 유지.
+# 변경 시 pyproject.toml과 함께 업데이트할 것.
+
+datasets>=2.21.0
+libsql-client>=0.3.1
+python-dotenv>=1.0.0
+numpy>=1.26.0
+tqdm>=4.66.0
+sentence-transformers>=3.0.0
+mcp>=1.0.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+httpx>=0.27.0

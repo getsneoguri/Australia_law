@@ -1,0 +1,54 @@
+[project]
+name = "au-law-mcp"
+version = "0.1.0"
+description = "MCP server for Australian federal and state legislation and case law"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "getsneoguri" }
+]
+
+dependencies = [
+    # HuggingFace Datasets: corpus + embeddings 다운로드
+    "datasets>=2.21.0",
+    # Turso libSQL Python 클라이언트 (동기/비동기 모두 지원)
+    "libsql-client>=0.3.1",
+    # 환경변수 로딩
+    "python-dotenv>=1.0.0",
+    # 벡터 수치 연산 (평균 풀링, 이진 양자화 등)
+    "numpy>=1.26.0",
+    # CLI 진행률 표시
+    "tqdm>=4.66.0",
+    # 쿼리 임베딩 계산용 (MCP 서버 런타임에 로드)
+    "sentence-transformers>=3.0.0",
+    # Phase 2 MCP 서버에서 사용
+    "mcp>=1.0.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+# 개발 도구: 테스트, 타입 체크, 포맷터
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/au_law_mcp"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]  # line length은 line-length 설정으로만 강제
