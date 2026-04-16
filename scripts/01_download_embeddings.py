@@ -62,7 +62,8 @@ def main() -> int:
     # token: 레이트 리밋 완화 및 속도 향상에 사용 (선택).
     ds = load_dataset(
         "isaacus/open-australian-legal-embeddings",
-        split="corpus",
+        name="default",
+        split="train",
         keep_in_memory=False,
         token=settings.hf_token,
     )
