@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: au-law-mcp
+    runtime: python
+    plan: free
+    buildCommand: pip install fastapi uvicorn libsql-experimental pydantic
+    startCommand: python src/au_law_mcp/server.py
+    healthCheckPath: /health
+    envVars:
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: PORT
+        value: 8000

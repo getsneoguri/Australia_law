@@ -45,7 +45,8 @@ def main() -> int:
     # 단, 전체 개수를 모르므로 tqdm total은 공식 데이터셋 카드의 값을 사용.
     ds = load_dataset(
         "isaacus/open-australian-legal-corpus",
-        split="corpus",
+        name="default",
+        split="train",
         streaming=True,
         token=settings.hf_token,
     )
