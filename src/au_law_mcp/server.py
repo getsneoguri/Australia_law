@@ -72,6 +72,7 @@ app = FastAPI(
         "이 API는 법률 자문을 제공하지 않습니다."
     ),
     version="1.0.0",
+    servers=[{"url": "https://au-law-mcp.onrender.com", "description": "Production"}],
 )
 
 app.add_middleware(
