@@ -3,15 +3,8 @@
 FastAPI 기반. Copilot Studio에서 OpenAPI 스펙으로 커스텀 커넥터 생성 가능.
 Render Free 티어에 배포.
 
-엔드포인트:
-  GET  /health                    — keep-alive
-  GET  /docs                      — Swagger UI (OpenAPI 테스트)
-  GET  /openapi.json              — OpenAPI v3 스펙 (자동 생성)
-  POST /api/search_legislation    — 법령 키워드 검색
-  POST /api/search_case_law       — 판례 키워드 검색
-  POST /api/get_document          — 문서 상세 조회
-  POST /api/filter_by_jurisdiction — 관할별 브라우징
-  GET  /api/statistics            — DB 통계
+DB 접속: libsql-client (순수 Python, 빌드 도구 불필요) HTTP 모드 사용.
+TURSO_DATABASE_URL을 https:// 형식으로 변환하여 HTTP 프로토콜로 접속.
 """
 
 from __future__ import annotations
@@ -19,7 +12,7 @@ from __future__ import annotations
 import os
 from typing import Optional
 
-import libsql_experimental as libsql
+import libsql_client
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -37,9 +30,36 @@ def _env(key: str) -> str:
 TURSO_URL = _env("TURSO_DATABASE_URL")
 TURSO_TOKEN = _env("TURSO_AUTH_TOKEN")
 
+# libsql-client는 HTTP URL(https://)을 사용해야 함.
+# Turso가 제공하는 libsql:// URL을 https://로 변환.
+HTTP_URL = TURSO_URL.replace("libsql://", "https://")
+
 
 def get_db():
-    return libsql.connect(TURSO_URL, auth_token=TURSO_TOKEN)
+    """동기 libsql-client 생성. 각 요청마다 새로 생성."""
+    return libsql_client.create_client_sync(
+        url=HTTP_URL,
+        auth_token=TURSO_TOKEN,
+    )
+
+
+def query(sql: str, args=None):
+    """SQL 실행 후 rows 반환하는 헬퍼."""
+    client = get_db()
+    try:
+        if args:
+            rs = client.execute(sql, args)
+        else:
+            rs = client.execute(sql)
+        return rs.rows
+    finally:
+        client.close()
+
+
+def query_one(sql: str, args=None):
+    """단일 행 반환."""
+    rows = query(sql, args)
+    return rows[0] if rows else None
 
 
 # ── FastAPI 앱 생성 ──
@@ -54,7 +74,6 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS: Copilot Studio 및 브라우저에서 접근 허용
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -63,7 +82,7 @@ app.add_middleware(
 )
 
 
-# ── Pydantic 모델 (요청/응답 스키마 — OpenAPI 자동 생성용) ──
+# ── Pydantic 모델 ──
 
 class SearchLegislationRequest(BaseModel):
     query: str = Field(description="검색어 (예: 'patent disclosure', 'privacy act')")
@@ -145,10 +164,9 @@ def health_check():
 )
 def search_legislation(req: SearchLegislationRequest):
     limit = min(req.limit or 10, 50)
-    conn = get_db()
 
     if req.jurisdiction:
-        rows = conn.execute("""
+        rows = query("""
             SELECT d.version_id, d.title, d.citation, d.jurisdiction,
                    d.doc_type, d.date, d.url,
                    snippet(documents_fts, 2, '<b>', '</b>', '...', 40) AS snippet
@@ -159,9 +177,9 @@ def search_legislation(req: SearchLegislationRequest):
               AND d.jurisdiction = ?
             ORDER BY rank
             LIMIT ?
-        """, (req.query, req.jurisdiction, limit)).fetchall()
+        """, [req.query, req.jurisdiction, limit])
     else:
-        rows = conn.execute("""
+        rows = query("""
             SELECT d.version_id, d.title, d.citation, d.jurisdiction,
                    d.doc_type, d.date, d.url,
                    snippet(documents_fts, 2, '<b>', '</b>', '...', 40) AS snippet
@@ -171,9 +189,8 @@ def search_legislation(req: SearchLegislationRequest):
               AND d.doc_type IN ('primary_legislation', 'secondary_legislation')
             ORDER BY rank
             LIMIT ?
-        """, (req.query, limit)).fetchall()
+        """, [req.query, limit])
 
-    conn.close()
     return [
         DocumentResult(
             version_id=r[0], title=r[1], citation=r[2], jurisdiction=r[3],
@@ -192,7 +209,6 @@ def search_legislation(req: SearchLegislationRequest):
 )
 def search_case_law(req: SearchCaseLawRequest):
     limit = min(req.limit or 10, 50)
-    conn = get_db()
 
     sql = """
         SELECT d.version_id, d.title, d.citation, d.jurisdiction,
@@ -203,7 +219,7 @@ def search_case_law(req: SearchCaseLawRequest):
         WHERE documents_fts MATCH ?
           AND d.doc_type = 'decision'
     """
-    params: list = [req.query]
+    params = [req.query]
 
     if req.jurisdiction:
         sql += " AND d.jurisdiction = ?"
@@ -218,8 +234,7 @@ def search_case_law(req: SearchCaseLawRequest):
     sql += " ORDER BY rank LIMIT ?"
     params.append(limit)
 
-    rows = conn.execute(sql, tuple(params)).fetchall()
-    conn.close()
+    rows = query(sql, params)
 
     return [
         DocumentResult(
@@ -238,14 +253,12 @@ def search_case_law(req: SearchCaseLawRequest):
     description="version_id로 특정 문서의 메타데이터와 첫 2000자를 조회합니다.",
 )
 def get_document(req: GetDocumentRequest):
-    conn = get_db()
-    row = conn.execute("""
+    row = query_one("""
         SELECT version_id, title, jurisdiction, doc_type,
                date, citation, url, source, text_snippet
         FROM documents
         WHERE version_id = ?
-    """, (req.version_id,)).fetchone()
-    conn.close()
+    """, [req.version_id])
 
     if not row:
         raise HTTPException(status_code=404, detail=f"문서를 찾을 수 없습니다: {req.version_id}")
@@ -265,26 +278,24 @@ def get_document(req: GetDocumentRequest):
 )
 def filter_by_jurisdiction(req: FilterRequest):
     limit = min(req.limit or 20, 100)
-    conn = get_db()
 
     if req.doc_type:
-        rows = conn.execute("""
+        rows = query("""
             SELECT version_id, title, citation, jurisdiction, doc_type, date, url
             FROM documents
             WHERE jurisdiction = ? AND doc_type = ?
             ORDER BY date DESC NULLS LAST
             LIMIT ?
-        """, (req.jurisdiction, req.doc_type, limit)).fetchall()
+        """, [req.jurisdiction, req.doc_type, limit])
     else:
-        rows = conn.execute("""
+        rows = query("""
             SELECT version_id, title, citation, jurisdiction, doc_type, date, url
             FROM documents
             WHERE jurisdiction = ?
             ORDER BY date DESC NULLS LAST
             LIMIT ?
-        """, (req.jurisdiction, limit)).fetchall()
+        """, [req.jurisdiction, limit])
 
-    conn.close()
     return [
         DocumentResult(
             version_id=r[0], title=r[1], citation=r[2], jurisdiction=r[3],
@@ -302,15 +313,9 @@ def filter_by_jurisdiction(req: FilterRequest):
     description="전체 문서 수, 관할별·유형별 분포를 반환합니다.",
 )
 def get_statistics():
-    conn = get_db()
-    total = conn.execute("SELECT count(*) FROM documents").fetchone()[0]
-    jur = conn.execute(
-        "SELECT jurisdiction, count(*) FROM documents GROUP BY jurisdiction ORDER BY count(*) DESC"
-    ).fetchall()
-    types = conn.execute(
-        "SELECT doc_type, count(*) FROM documents GROUP BY doc_type ORDER BY count(*) DESC"
-    ).fetchall()
-    conn.close()
+    total = query_one("SELECT count(*) FROM documents")[0]
+    jur = query("SELECT jurisdiction, count(*) FROM documents GROUP BY jurisdiction ORDER BY count(*) DESC")
+    types = query("SELECT doc_type, count(*) FROM documents GROUP BY doc_type ORDER BY count(*) DESC")
 
     return StatisticsResponse(
         total_documents=total,
