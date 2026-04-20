@@ -44,9 +44,10 @@ def query_one(sql: str, args=None):
 
 app = FastAPI(
     title="Australia Law API",
-    description="호주 연방·주 법령 및 판례 검색 API. 232,000개 이상 법률 문서. Commonwealth, NSW, QLD, WA, SA, Tasmania, VIC 포함. 법률 자문 불가.",
+    description="Australia federal and state legislation and case law search API. Over 232000 legal documents. Jurisdictions: Commonwealth, NSW, QLD, WA, SA, Tasmania, VIC. Not legal advice.",
     version="1.2.0",
     servers=[{"url": "https://au-law-mcp.onrender.com", "description": "Production"}],
+    openapi_version="3.0.3",
 )
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
