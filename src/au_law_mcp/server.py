@@ -49,6 +49,24 @@ app = FastAPI(
     servers=[{"url": "https://au-law-mcp.onrender.com", "description": "Production"}],
     openapi_version="3.0.3",
 )
+# OpenAPI 3.0.3 강제 변환 (Copilot Studio / Power Automate 호환)
+from fastapi.openapi.utils import get_openapi
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+        servers=[{"url": "https://au-law-mcp.onrender.com", "description": "Production"}],
+    )
+    schema["openapi"] = "3.0.3"
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 @app.get("/health", summary="서버 상태 확인", tags=["System"])
