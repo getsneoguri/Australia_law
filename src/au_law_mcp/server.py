@@ -46,6 +46,7 @@ app = FastAPI(
     title="Australia Law API",
     description="호주 연방·주 법령 및 판례 검색 API. 232,000개 이상 법률 문서. Commonwealth, NSW, QLD, WA, SA, Tasmania, VIC 포함. 법률 자문 불가.",
     version="1.2.0",
+    servers=[{"url": "https://au-law-mcp.onrender.com", "description": "Production"}],
 )
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
