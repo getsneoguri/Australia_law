@@ -1,5 +1,7 @@
 """Australia Law REST API Server - Copilot Studio 호환 버전 (GET 방식)."""
 
+from fastapi.responses import HTMLResponse
+
 from __future__ import annotations
 import os
 from typing import Optional
