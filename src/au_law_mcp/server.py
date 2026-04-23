@@ -1,8 +1,7 @@
 """Australia Law REST API Server - Copilot Studio 호환 버전 (GET 방식)."""
 
-from fastapi.responses import HTMLResponse
-
 from __future__ import annotations
+from fastapi.responses import HTMLResponse
 import os
 from typing import Optional
 import httpx
@@ -74,6 +73,49 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 @app.get("/health", summary="서버 상태 확인", tags=["System"])
 def health_check():
     return {"status": "ok", "version": "1.2.0"}
+
+@app.get("/privacy", response_class=HTMLResponse, include_in_schema=False)
+def privacy_policy():
+    return """
+    <!doctype html>
+    <html lang="ko">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>Privacy Policy - Australia Law Agent</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; max-width: 840px; margin: 40px auto; padding: 0 16px; line-height: 1.6; }
+        h1, h2 { line-height: 1.3; }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; }
+      </style>
+    </head>
+    <body>
+      <h1>개인정보 처리방침 (Privacy Policy)</h1>
+      <p>Australia Law Agent는 법령/판례 검색 응답 제공을 위해 사용자의 질의 내용을 처리합니다.</p>
+
+      <h2>1. 수집 항목</h2>
+      <ul>
+        <li>사용자가 입력한 질문 텍스트</li>
+        <li>검색 파라미터(예: 키워드, 관할, 날짜 범위)</li>
+      </ul>
+
+      <h2>2. 이용 목적</h2>
+      <p>호주 법령 및 판례 검색 결과를 생성하고 제공하기 위함입니다.</p>
+
+      <h2>3. 보관 및 파기</h2>
+      <p>서버 로그는 운영 안정성 목적의 최소 범위에서 일시적으로 보관될 수 있으며, 정기적으로 삭제됩니다.</p>
+
+      <h2>4. 제3자 제공</h2>
+      <p>서비스 운영 인프라(Render, DB 제공자 등) 처리 과정에서 기술적으로 필요한 범위 내 전송이 발생할 수 있습니다.</p>
+
+      <h2>5. 문의</h2>
+      <p>문의: your-email@example.com</p>
+
+      <h2>6. 고지</h2>
+      <p>본 서비스는 일반 정보 제공 목적이며 법률 자문을 제공하지 않습니다.</p>
+    </body>
+    </html>
+    """
 
 @app.get("/api/statistics", summary="DB 통계 조회", tags=["System"])
 def get_statistics():
